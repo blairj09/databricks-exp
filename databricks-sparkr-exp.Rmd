@@ -1,0 +1,27 @@
+---
+title: "Databricks Connect"
+output: html_notebook
+---
+
+```{r setup}
+# Packages ----
+library(SparkR, lib.loc = .libPaths(c(file.path("/Users/jamesblair/spark/spark-2.4.4-bin-hadoop2.7", "R", "lib"), .libPaths())))
+
+# Set env variables
+Sys.setenv(SPARK_HOME = "/Users/jamesblair/anaconda3/envs/databricks/lib/python3.7/site-packages/pyspark/")
+```
+
+```{r spark-connection}
+sparkR.session()
+
+df <- as.DataFrame(faithful)
+head(df)
+
+df1 <- dapply(df, function(x) {x}, schema(df))
+collect(df1)
+```
+
+```{r}
+sparkR.session.stop()
+```
+
