@@ -34,6 +34,8 @@ sc <- spark_connect(master = "local", method = "databricks")
 This repository uses [`renv`](https://rstudio.github.io/renv/articles/renv.html)
 and packages can be restored using `renv::restore()`.
 
+---
+
 ## Known Concerns
 These are concerns that may not be actual issues, but are things I have come
 across while testing and evaluating Databricks Connect:
@@ -42,5 +44,4 @@ across while testing and evaluating Databricks Connect:
 - Can't figure out DBFS, but that may just be me
   - Couldn't read from CSV uploaded to DBFS
 - Uploaded data as .csv to DBFS, then used DB GUI to create a table. Then
-referenced that table usign `tbl()`. Worked like a charm!
-- Is it necessary to set SPARK_HOME for this to work?
+referenced that table using `tbl()`. Worked like a charm!
