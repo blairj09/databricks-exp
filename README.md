@@ -36,7 +36,7 @@ and packages can be restored using `renv::restore()`.
 
 ---
 
-## Known Concerns
+#### Known Concerns
 These are concerns that may not be actual issues, but are things I have come
 across while testing and evaluating Databricks Connect:
 
