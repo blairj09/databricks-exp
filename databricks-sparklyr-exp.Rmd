@@ -5,8 +5,8 @@ output: html_notebook
 
 ```{r setup}
 # Packages ----
-library(sparklyr)
 library(dplyr)
+library(sparklyr)
 library(ggplot2)
 
 # Set env variables ----
@@ -28,13 +28,52 @@ If necessary, install Spark
 
 ```{r spark-connection}
 config <- spark_config()
-config$spark.driver.memory = "2g"
-sc <- spark_connect(master = "local", method = "databricks")
+# config$spark.driver.memory = "2g"
+# config$sql.catalogImplementation = "hive"
+# sc <- spark_connect(master = "local", method = "databricks")
+sc <- spark_connect(master = "local", method = "databricks", config = config)
 ```
 
 ```{r}
 sc
 ```
+
+## Copying data
+```{r}
+cars <- copy_to(sc, mtcars, "cars", overwrite = TRUE)
+```
+
+```{r}
+iris_tbl <- copy_to(sc, iris, "iris", overwrite = TRUE)
+```
+
+
+```{r}
+sdf_len(sc, 10) %>% 
+  sdf_register("nums")
+
+nums <- tbl(sc, "nums")
+nums
+```
+
+
+```{r}
+cars <- sdf_copy_to(sc, mtcars, serializer = "csv_string", overwrite = TRUE)
+```
+
+```{r}
+cars <- sdf_copy_to(sc, mtcars, overwrite = TRUE)
+```
+
+
+```{r}
+sparklyr:::spark_connection_in_driver(sc)
+```
+
+```{r}
+sparklyr:::spark_data_perform_copy(sc, sparklyr:::spark_serialize_csv_string, mtcars, -1)
+```
+
 
 ## Connecting to data
 ```{r spark-data}
