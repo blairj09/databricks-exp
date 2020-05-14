@@ -5,3 +5,7 @@
 *.nb.html
 data/
 
+# mlflow files / directories
+metastore_db/
+*.log
+mlruns/
