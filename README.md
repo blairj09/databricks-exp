@@ -39,3 +39,13 @@ This repository uses [`renv`](https://rstudio.github.io/renv/articles/renv.html)
 and packages can be restored using `renv::restore()`. Note, there have been no
 efforts made to create light dependencies. Therefore, there are several packages
 used by this project.
+
+## Test Environment
+General description of the environment used for testing and proving Databricks +
+RStudio
+
+* Use `sol-eng-terraform` and RST standalone
+* Install `databricks-connect` using `/opt/python/` system installation
+* Run `databricks-connect configure` (needs to be run per user)
+* Install RStudio Pro Drivers
+* Install Databricks Spark Driver
