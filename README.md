@@ -36,4 +36,6 @@ sc <- spark_connect(master = "local", method = "databricks")
 
 ## Setup
 This repository uses [`renv`](https://rstudio.github.io/renv/articles/renv.html)
-and packages can be restored using `renv::restore()`.
+and packages can be restored using `renv::restore()`. Note, there have been no
+efforts made to create light dependencies. Therefore, there are several packages
+used by this project.
