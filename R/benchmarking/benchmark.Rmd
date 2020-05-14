@@ -1,0 +1,192 @@
+---
+title: "Benchmarking sparklyr and Spark ODBC"
+output: html_document
+---
+
+```{r setup}
+# Pakages ----
+library(sparklyr)
+library(DBI)
+library(bench)
+library(dplyr)
+
+# RMarkdown Options ----
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r utils}
+ITERS <- 100
+
+benchmark <- function(f, iterations) {
+  bench::mark(
+    sparklyr = f(sc),
+    `2.6.10` = f(con_old),
+    `2.6.12` = f(con_new),
+    iterations = iterations,
+    check = FALSE
+  )
+}
+```
+
+
+## Connection
+Benchmark connections using `sparklyr` and `odbc`. ODBC connections are made using two different drivers: 2.6.10 and 2.6.12
+```{r connection-bm}
+sleep_time <- 5
+con_results <- mark(
+  sparklyr = {
+    sc <- spark_connect(method = "databricks")
+    spark_disconnect(sc)
+    Sys.sleep(sleep_time)
+  },
+  "2.6.10" = {
+    con <- dbConnect(odbc::odbc(), "databricks 2.6.10")
+    dbDisconnect(con)
+  },
+  "2.6.12" = {
+    con <- dbConnect(odbc::odbc(), "databricks 2.6.12")
+    dbDisconnect(con)
+  },
+  iterations = ITERS,
+  check = FALSE
+)
+
+con_results$time[[1]] <- con_results$time[[1]] - sleep_time
+
+plot(con_results)
+```
+
+
+## Dplyr Translations
+### Benchmark setup
+#### Spark
+Trying to configure Spark to allow copying over the full flights dataset
+(https://stackoverflow.com/questions/41384336/running-out-of-heap-space-in-sparklyr-but-have-plenty-of-memory).
+
+Couldn't get this to work so just created the table from uploaded CSV in the
+DataBricks UI. Will try to circle back to this later.
+```{r, eval = FALSE}
+# Set memory allocation for whole local Spark instance
+Sys.setenv("SPARK_MEM" = "10g")
+
+# Set driver and executor memory allocations
+config <- spark_config()
+config$spark.driver.memory <- "10G"
+config$spark.executor.memory <- "10G"
+
+sc <- spark_connect(method = "databricks", config = config)
+```
+
+
+```{r spark-connection}
+config <- spark_config()
+# config$`sparklyr.shell.driver-memory` <- "16G"
+# config$spark.executor.memory <- "16G"
+# config$spark.driver.memory <- "16G"
+sc <- spark_connect(method = "databricks", config = config)
+```
+
+```{r, eval = FALSE}
+copy_to(sc, nycflights13::flights, "flights", overwrite = TRUE) %>% 
+  spark_write_table(name = "flights", mode = "overwrite", options = list(path = "dbfs:/nycflights/flights"))
+copy_to(sc, nycflights13::airlines, "airlines", overwrite = TRUE) %>% 
+  spark_write_table(name = "airlines", mode = "overwrite", options(path = "dbfs:/nycflights/airlines"))
+copy_to(sc, nycflights13::airports, "airports", overwrite = TRUE) %>% 
+  spark_write_table(name = "airports", mode = "overwrite", options = list(path = "dbfs:/nycflights/airports"))
+copy_to(sc, nycflights13::planes, "planes", overwrite = TRUE) %>% 
+  spark_write_table(name = "planes", mode = "overwrite", options = list(path = "dbfs:/nycflights/planes"))
+copy_to(sc, nycflights13::weather, "weather", overwrite = TRUE) %>% 
+  spark_write_table(name = "weather", mode = "overwrite", options = list(path = "dbfs:/nycflights/weather"))
+```
+
+```{r, eval = FALSE}
+readr::write_csv(nycflights13::flights, "data/flights.csv")
+```
+
+```{bash, eval = FALSE}
+dbfs cp data/flights.csv dbfs:/FileStore
+```
+
+```{r, eval = FALSE}
+flights <- spark_read_csv(sc, "dbfs:/FileStore/flights.csv") %>% 
+  spark_write_table(name = "fights", options(path = "dbfs:/nycflights/flights"))
+```
+
+#### ODBC
+```{r odbc-connections}
+# ODBC connections
+con_old <- dbConnect(odbc::odbc(), "databricks 2.6.10")
+con_new <- dbConnect(odbc::odbc(), "databricks 2.6.12")
+```
+
+### Collecting
+```{r collecting-bm}
+collect_bm <- function(con) {
+  tbl(con, "flights") %>% 
+    collect()
+}
+
+collect_results <- benchmark(collect_bm, ITERS)
+
+collect_results
+
+plot(collect_results)
+```
+
+### Group By
+```{r group-bm}
+group_bm <- function(con) {
+  tbl(con, "flights") %>% 
+    group_by(day) %>% 
+    summarise(avg_dep_delay = mean(dep_delay, na.rm = TRUE)) %>% 
+    collect()
+}
+
+group_results <- benchmark(group_bm, ITERS)
+
+group_results
+
+plot(group_results)
+```
+
+### Joins
+```{r joins-bm}
+join_bm <- function(con) {
+  tbl(con, "flights") %>% 
+    left_join(tbl(con, "airlines")) %>% 
+    left_join(tbl(con, "weather")) %>% 
+    head() %>% 
+    collect()
+}
+
+join_results <- benchmark(join_bm, ITERS)
+
+join_results
+
+plot(join_results)
+```
+
+### Window
+```{r window-bm}
+window_bm <- function(con) {
+  tbl(con, "flights") %>% 
+    group_by(year, month, day) %>% 
+    select(dep_delay) %>% 
+    filter(dep_delay == min(dep_delay) || dep_delay == max(dep_delay)) %>% 
+    collect()
+}
+
+window_results <- benchmark(window_bm, ITERS)
+
+window_results
+
+plot(window_results)
+```
+
+## Disconnect
+```{r disconnect}
+spark_disconnect(sc)
+dbDisconnect(con_old)
+dbDisconnect(con_new)
+```
+
