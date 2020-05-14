@@ -8,19 +8,9 @@ output: html_notebook
 library(dplyr)
 library(sparklyr)
 library(ggplot2)
-
-# Set env variables ----
-Sys.setenv(SPARK_HOME = "/Users/jamesblair/anaconda3/envs/databricks/lib/python3.7/site-packages/pyspark/")
 ```
 
-Data that is copied into DB using the cluster web interface, then turned into a
-table
-```{r write-data}
-fs::dir_create("data")
-readr::write_csv(nycflights13::flights, "data/flights.csv")
-readr::write_csv(iris, "data/iris.csv")
-```
-
+## Connecting
 If necessary, install Spark
 ```{r}
 # sparklyr::spark_install(version = "2.4.4", hadoop_version = "2.7")
@@ -30,8 +20,7 @@ If necessary, install Spark
 config <- spark_config()
 # config$spark.driver.memory = "2g"
 # config$sql.catalogImplementation = "hive"
-# sc <- spark_connect(master = "local", method = "databricks")
-sc <- spark_connect(master = "local", method = "databricks", config = config)
+sc <- spark_connect(method = "databricks", config = config)
 ```
 
 ```{r}
@@ -39,6 +28,14 @@ sc
 ```
 
 ## Copying data
+Data that is copied into DB using the cluster web interface, then turned into a
+table
+```{r write-data}
+fs::dir_create("data")
+readr::write_csv(nycflights13::flights, "data/flights.csv")
+readr::write_csv(iris, "data/iris.csv")
+```
+
 ```{r}
 cars <- copy_to(sc, mtcars, "cars", overwrite = TRUE)
 ```
@@ -74,8 +71,58 @@ sparklyr:::spark_connection_in_driver(sc)
 sparklyr:::spark_data_perform_copy(sc, sparklyr:::spark_serialize_csv_string, mtcars, -1)
 ```
 
+There are managed and unmanaged tables in Spark (https://docs.databricks.com/data/tables.html#managed-and-unmanaged-tables). This showcases how to create managed and unmanaged tables from Spark DataFrames.
+
+```{r}
+retail <- spark_read_csv(sc, path = "dbfs:/databricks-datasets/online_retail/data-001/data.csv", name = "retail")
+```
+
+```{r}
+retail
+```
+
+
+### Managed Tables
+For this table, Spark manages both the data and the metadata. The metadata and data are both stored in dbfs. Dropping this table deletes both metadata and the actual data.
+```{r}
+invoice_summary <- retail %>% 
+  mutate(total = Quantity * UnitPrice) %>% 
+  group_by(InvoiceNo) %>% 
+  summarise(Total = sum(total, na.rm = TRUE))
+```
+
+```{r}
+invoice_summary %>% 
+  spark_write_table("invoice_summary", mode = "overwrite")
+```
+
+### Unmanaged tables
+For this table, Spark manages the metadata while the data location is specifically specified. Dropping the table only deletes the metadata and does not impact the actual data.
+
+```{r}
+customer_summary <- retail %>% 
+  mutate(total = UnitPrice * Quantity) %>% 
+  group_by(CustomerID) %>% 
+  summarise(Total = sum(total, na.rm = TRUE))
+```
+
+It looks like these tables always save as parquet files in a directory defined in options(path = <path>). Can we specify an alternative format? 
+```{r}
+customer_summary %>% 
+  spark_write_table(name = "customer_summary", 
+                    mode = "overwrite", 
+                    options = list(
+                      path = "dbfs:/retail/customer-summary"))
+```
 
 ## Connecting to data
+Connecting to previous tables
+```{r}
+customer_summary_p <- spark_read_parquet(sc, path = "dbfs:/retail/customer-summary.parquet")
+```
+
+
+
 ```{r spark-data}
 flights <- tbl(sc, "flights")
 ```
