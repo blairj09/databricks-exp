@@ -4,6 +4,7 @@
 .Ruserdata
 *.nb.html
 data/
+rsconnect/
 
 # mlflow files / directories
 metastore_db/
