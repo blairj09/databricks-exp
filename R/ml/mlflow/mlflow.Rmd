@@ -1,0 +1,154 @@
+---
+title: "RStudio, mlflow, and databricks"
+output: html_notebook
+---
+
+```{r setup}
+# Packages ----
+library(sparklyr)
+library(mlflow)
+library(carrier)
+library(tidyverse)
+library(parsnip)
+library(yardstick)
+library(reticulate)
+
+# Python setup ----
+use_condaenv("r-mlflow")
+```
+
+```{r spark-connection}
+sc <- spark_connect(method = "databricks")
+```
+
+Here are the necessary steps:
+1. Register to the Databricks mlflow tracking server
+2. Build models
+  a. Native R model
+  b. Spark model
+3. Log each model as an artifact to mlflow
+4. Register each model to the model registry
+5. Deploy the spark model into databricks from the model registry
+   - This isn't currently supported
+6. Get the R model from the registry via mlflow::load_model
+7. Build Plumber API around the R model
+8. Build shiny app that uses both Plumber model hosted on RSC and Spark model hosted on databricks
+
+## Setup mlflow
+First, the `mlflow` R client needs to be installed and `mlflow` itself needs to be installed. Followed the instructions [here](https://github.com/mlflow/mlflow/tree/master/mlflow/R/mlflow) to get the dev version setup.
+
+Once `mlflow` is available, followed the steps outlined here: https://docs.databricks.com/applications/mlflow/access-hosted-tracking-server.html
+
+Created the necessary environment variables in `.Renviron`. Ensure there is no
+trailing `/` in `DATABRICKS_HOST`
+
+```
+MLFLOW_TRACKING_URI=databricks
+DATABRICKS_HOST=...
+DATABRICKS_TOKEN=...
+```
+
+Once those values are set, the `mlflow` R package automatically connects to the
+tracking server hosted by databricks.
+
+### Specify experiment
+An experiment can be connected to or created from R using
+`mlflow::mlflow_set_experiment()`, which connects to an existing experiment or
+creates a new one.
+
+```{r}
+(experiments <- mlflow_list_experiments())
+```
+
+```{r}
+db_connect_exp_id <- experiments %>% 
+  filter(str_detect(name, "db-connect")) %>% 
+  pull(experiment_id)
+
+mlflow_set_experiment(experiment_id = db_connect_exp_id)
+
+mlflow_get_experiment()
+```
+
+## Build models
+### R model
+#### Data
+Using `iris` here for simplicity
+```{r}
+iris
+```
+
+#### Define model
+```{r}
+model_train <- function(x, y, mtry = NULL, trees = NULL, min_n = NULL) {
+ with(mlflow_start_run(), {
+   # Log params to mlflow
+   mlflow_log_param("mtry", mtry)
+   mlflow_log_param("trees", trees)
+   mlflow_log_param("min_n", min_n)
+   
+   # Setup model
+   model <- rand_forest(mtry = mtry, trees = trees, min_n = min_n) %>% 
+     set_engine("ranger") %>% 
+     set_mode("classification")
+   
+   # Train model
+   model_fit <- model %>% 
+     fit_xy(x = x, y = y)
+   
+   # Evaluate model
+   predictions <- predict(model_fit, iris) %>% 
+     bind_cols(iris %>% select(Species))
+   
+   pred_acc <- accuracy(predictions, truth = "Species", estimate = ".pred_class")[[".estimate"]]
+   
+   # Log performance
+   mlflow_log_metric("accuracy", pred_acc)
+   
+   # Create portable model with crate
+   mlflow_predictor <- carrier::crate(~ranger:::predict.ranger(model$fit, .x)$predictions,
+                                      model = model_fit)
+   
+   # Log model to mlflow
+   mlflow_log_model(mlflow_predictor, "model")
+ })
+}
+```
+
+```{r}
+labels <- iris %>% 
+  select(Species)
+
+features <- iris %>% 
+  select(-Species)
+```
+
+```{r}
+model_train(features, labels, mtry = 3, trees = 10, min_n = 4)
+model_train(features, labels, mtry = 2, trees = 7, min_n = 4)
+model_train(features, labels, mtry = 3, trees = 20, min_n = 2)
+```
+
+#### Register Model
+This functionality isn't currently available in the R api. There are two ways to
+approach this step:
+1. Visit the tracking server and select the best performing model. Register that
+model to the model registry using the tracking server UI
+
+2. Use the `mlflow` python client to register the model. This requires knowing
+the full `model_uri`, which isn't easily obtained programatically.
+```{python}
+import mlflow
+
+mlflow.register_model(model_uri = 'dbfs:/mlflow/db-connect/3e00ce582037449aae17cbc441b15c72/artifacts/model', name = "iris")
+```
+
+#### Retrieve Model
+The model can be retrieved from mlflow and predictions can be run against the retrieved model
+```{r}
+rf_model <- mlflow_load_model(model_uri = "models:/iris_r/3")
+```
+
+```{r}
+mlflow_predict(rf_model, iris)
+```

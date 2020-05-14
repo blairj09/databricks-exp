@@ -1,0 +1,61 @@
+---
+title: "Databricks Model Train and Export"
+output: html_notebook
+---
+
+This notebook follows the example outlined here but uses `sparklyr` to
+demonstrate how the same result can be achieved using R.
+
+```{r setup}
+# Packages ----
+library(tidyverse)
+library(sparklyr)
+library(mleap)
+
+# Databricks connect setup ----
+spark_home <- system("databricks-connect get-spark-home", intern = TRUE)
+```
+
+```{r spark-connection}
+sc <- spark_connect(method = "databricks", spark_home = spark_home)
+```
+
+## Data
+```{r}
+df <- spark_read_parquet(sc, "/databricks-datasets/news20.binary/data-001/training") %>% 
+  select(text, topic)
+
+head(df)
+```
+
+```{r}
+arrow::read_parquet("/databricks-datasets/news20.binary/data-001/training")
+```
+
+
+```{r}
+sdf_schema(df)
+```
+
+## Model Pipeline
+```{r}
+pipeline <- ml_pipeline(sc) %>% 
+  ft_string_indexer(input_col = "topic", output_col = "label", handle_invalid = "keep") %>% 
+  ft_tokenizer(input_col = "words", output_col = "features") %>% 
+  ml_decision_tree_classifier()
+```
+
+```{r}
+?sparklyr::ml_param_map()
+```
+
+
+
+
+## Disconnect
+```{r}
+spark_disconnect(sc)
+```
+
+
+
