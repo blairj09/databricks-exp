@@ -1,0 +1,21 @@
+---
+title: "Databricks Job"
+output: html_notebook
+---
+
+```{r setup}
+# Packages ----
+library(sparklyr)
+
+# Spark Connect ----
+sc <- spark_connect(method = "databricks")
+```
+
+```{r}
+print(sc)
+```
+
+```{r}
+spark_disconnect(sc)
+```
+

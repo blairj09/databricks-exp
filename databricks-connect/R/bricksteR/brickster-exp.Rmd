@@ -1,0 +1,54 @@
+---
+title: "BricksteR Experiments"
+output: html_notebook
+---
+
+[bricksteR R package](https://github.com/RafiKurlansik/bricksteR/)
+
+```{r setup}
+# Packages ----
+library(bricksteR)
+```
+
+```{r}
+workspace <- "https://dbc-590dadb5-af33.cloud.databricks.com"
+```
+
+```{r}
+nb_path <- "/Users/james@rstudio.com/test-job"
+import_to_workspace(file = "job.Rmd",
+                    notebook_path = nb_path,
+                    workspace = workspace,
+                    overwrite = TRUE)
+```
+
+```{r}
+jobs_list(workspace = workspace)
+```
+
+```{r}
+new_job <- create_job(notebook_path = nb_path,
+                      name = "Foo",
+                      job_config = "default",
+                      workspace = workspace)
+
+new_job$job_id
+```
+
+```{r}
+run_job(job_id = new_job$job_id, workspace = workspace)
+```
+
+```{r}
+jobs_list(workspace = workspace)
+
+```
+
+
+---
+## Notes
+* Do not leave a trailing `/` at the end of the workspace - it causes weird issues with the API calls [2020-07-15]
+* This copies over an RMD doc to DB, but I'm not sure if DB knows how to run it - it interprets it as a DB notebook, not RMD
+* 
+
+

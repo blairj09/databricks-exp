@@ -9,6 +9,7 @@ model <- mlflow_load_model(model_uri = "models:/iris_r/2")
 #* Modify the request with already parsed data
 #* @filter add-data
 function(req, res) {
+  if (grepl("swagger", tolower(req$PATH_INFO))) return(forward())
   data <- tryCatch(jsonlite::parse_json(req$postBody, simplifyVector = TRUE),
                    error = function(e) NULL)
   if (is.null(data)) {

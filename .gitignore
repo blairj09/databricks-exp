@@ -5,8 +5,12 @@
 *.nb.html
 data/
 rsconnect/
+.Renviron
 
 # mlflow files / directories
 metastore_db/
 *.log
 mlruns/
+
+# venv
+.venv/
