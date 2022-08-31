@@ -3,7 +3,7 @@
 ## Setup
 Initial instructions are provided by Databricks here: https://docs.databricks.com/spark/latest/sparkr/rstudio.html
 
-These instuctions suggest using a floating license server with RSW. In this case, we'll use a license file. Databricks uses the construct of an "init script" to manage the installation of additional tools (like RSW) into a Databricks cluster. The init script used is mainted in this repository as [`rstudio-init.sh`](rstudio-init.sh). This file is modified from the [example](https://docs.databricks.com/spark/latest/sparkr/rstudio.html#install-rstudio-workbench) provided by Databricks.
+These instuctions suggest using a floating license server with RSW. In this case, we'll use a license file. Databricks uses the construct of an "init script" to manage the installation of additional tools (like RSW) into a Databricks cluster. The init script used is mainted in this repository as [`rstudio-simple-init.sh`](rstudio-simple-init.sh). This file is modified from the [example](https://docs.databricks.com/spark/latest/sparkr/rstudio.html#install-rstudio-workbench) provided by Databricks.
 
 RStudio License File is stored as a [secret](https://docs.databricks.com/security/secrets/secrets.html) within Databricks and referenced via [environment variable](https://docs.databricks.com/security/secrets/secrets.html#reference-a-secret-in-an-environment-variable) from the init script. These environment variables are set via the `databricks secrets` CLI.
 
