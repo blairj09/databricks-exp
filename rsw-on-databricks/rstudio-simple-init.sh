@@ -102,9 +102,6 @@ if [[ $DB_IS_DRIVER = "TRUE" ]]; then
   """ > /etc/rstudio/rserver.conf
 
   ## Configuring authentication
-  sudo echo 'auth-proxy=1' >> /etc/rstudio/rserver.conf
-  sudo echo 'auth-proxy-user-header-rewrite=^(.*)$ $1' >> /etc/rstudio/rserver.conf
-  sudo echo 'auth-proxy-sign-in-url=<domain>/login.html' >> /etc/rstudio/rserver.conf
   sudo echo 'admin-enabled=1' >> /etc/rstudio/rserver.conf
   sudo echo 'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' >> /etc/rstudio/rsession-profile
 
