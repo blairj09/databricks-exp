@@ -24,6 +24,7 @@ if [[ $DB_IS_DRIVER = "TRUE" ]]; then
   sudo gdebi --non-interactive rstudio-workbench-2022.12.0-daily-283.pro1-amd64.deb
 
   # VS Code
+  # Latest builds (Elsbeth Geranium) automatically setup VS Code as part of the RSW install
   # sudo rstudio-server install-vs-code /opt/code-server --extensions-dir=/opt/code-server/extensions
   # sudo rstudio-server install-vs-code-ext -d /opt/code-server
 
