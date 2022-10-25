@@ -20,12 +20,12 @@ if [[ $DB_IS_DRIVER = "TRUE" ]]; then
   cd /tmp
 
   # You can find new releases at https://rstudio.com/products/rstudio/download-commercial/debian-ubuntu/.
-  curl -O https://download2.rstudio.org/server/bionic/amd64/rstudio-workbench-2022.07.1-554.pro3-amd64.deb
-  sudo gdebi --non-interactive rstudio-workbench-2022.07.1-554.pro3-amd64.deb
+  curl -O https://s3.amazonaws.com/rstudio-ide-build/server/bionic/amd64/rstudio-workbench-2022.12.0-daily-283.pro1-amd64.deb
+  sudo gdebi --non-interactive rstudio-workbench-2022.12.0-daily-283.pro1-amd64.deb
 
   # VS Code
-  sudo rstudio-server install-vs-code /opt/code-server --extensions-dir=/opt/code-server/extensions
-  sudo rstudio-server install-vs-code-ext -d /opt/code-server
+  # sudo rstudio-server install-vs-code /opt/code-server --extensions-dir=/opt/code-server/extensions
+  # sudo rstudio-server install-vs-code-ext -d /opt/code-server
 
   # Jupyter
   JUPYTER_VERSION=3.8.10
